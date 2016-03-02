@@ -469,6 +469,8 @@ $window.btnBrowseForImages.add_Click(
         if($folder -ne $null)
         {
             $window.txtImageFolder.Text = $folder.self.Path
+            $window.lblMessage.Content = ''
+            $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
         }
     }
 )
@@ -487,6 +489,8 @@ $window.btnBrowseForScreensaver.add_Click(
         if($result -eq 'OK')
         {
             $window.txtOutputFile.Text = $saveAs.FileName
+            $window.lblMessage.Content = ''
+            $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
         }
     }
 )

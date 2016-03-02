@@ -432,7 +432,10 @@ function New-Screensaver
 
     # Add images as resources 
     $resList = @()
-    foreach($file in (Get-ChildItem -Path (Join-Path -Path $window.txtImageFolder.Text -ChildPath '*') -Include '*.jpg,*.jpeg,*.bmp,*.gif,*.png'.Split(',') | Sort-Object -Property Name))
+    $folderProps = @{'Path' = (Join-Path -Path $window.txtImageFolder.Text -ChildPath '*');
+                     'Include' = @('*.jpg','*.jpeg','*.bmp','*.gif','*.png')
+                    }
+    foreach($file in (Get-ChildItem @folderProps | Sort-Object -Property Name))
     {
         $cp.EmbeddedResources.Add($file.FullName.ToLower())
         $resList += '"{0}"' -f $file.Name.ToLower()
@@ -456,7 +459,10 @@ function New-Screensaver
     }
 }
 
-$window = Convert-XAMLtoWindow -XAML $xaml -NamedElements 'lblImageFolder', 'txtImageFolder', 'btnBrowseForImages', 'lblOutputFile', 'txtOutputFile', 'btnBrowseForScreensaver', 'lblSlideTimeout', 'txtSlideTimeout', 'lblSeconds', 'lblMessage', 'btnRun', 'btnBuild' -PassThru
+$window = Convert-XAMLtoWindow -XAML $xaml -NamedElements 'lblImageFolder', 'txtImageFolder', 'btnBrowseForImages', 
+                                                          'lblOutputFile', 'txtOutputFile', 'btnBrowseForScreensaver', 
+                                                          'lblSlideTimeout', 'txtSlideTimeout', 'lblSeconds', 
+                                                          'lblMessage', 'btnRun', 'btnBuild' -PassThru
 
 $window.btnBrowseForImages.add_Click(
     {

@@ -550,6 +550,17 @@ $window.btnBuild.add_Click(
     }
 )
 
+$clearRunDetails = {
+        [System.Object]$sender = $args[0]
+        [System.Windows.Controls.TextChangedEventArgs]$e = $args[1]   
+        
+        $window.lblMessage.Content = ''
+        $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
+    }
+
+$window.txtImageFolder.add_TextChanged($clearRunDetails)
+$window.txtOutputFile.add_TextChanged($clearRunDetails)
+$window.txtSlideTimeout.add_TextChanged($clearRunDetails)
 
 $window.ShowDialog()
 

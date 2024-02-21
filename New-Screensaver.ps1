@@ -485,12 +485,26 @@ function New-Screensaver {
     Remove-Item -Path $srcFile -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $manifestFile -Force -ErrorAction SilentlyContinue
 
-    if ($result.NativeCompilerReturnValue -eq 0) {
+    if($result.Errors.Count -gt 0) {
+        $window.lblMessage.Content = 'Screensaver build failed'
+
+        Write-Host 'Error List'
+        foreach($resultError in $result.Errors) {
+            Write-Host "  $($resultError.ToString())"
+        }
+
+    } else {
         $window.lblMessage.Content = 'Screensaver built successfully'
         $window.btnRun.Visibility = [System.Windows.Visibility]::Visible
-    } else {
-        $window.lblMessage.Content = 'Screensaver build failed'
+
+        Write-Host "Compiler returned with result code: $($result.NativeCompilerReturnValue.ToString())"
+        Write-Host "Generated assembly name: $($result.CompiledAssembly.FullName)"
+        if($null -ne $result.PathToAssembly) {
+            Write-Host "Path to assembly: $($result.PathToAssembly)"
+        }
     }
+
+    Write-Host '-----'
 }
 
 $window = Convert-XAMLtoWindow -XAML $xaml -PassThru -NamedElements @(

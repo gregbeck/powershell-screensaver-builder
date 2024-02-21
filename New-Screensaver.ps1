@@ -120,6 +120,7 @@ namespace SimpleScreensaver
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Reflection;
     using System.Windows;
@@ -208,6 +209,11 @@ namespace SimpleScreensaver
             var random = new Random();
             foreach (var screen in System.Windows.Forms.Screen.AllScreens)
             {
+                Debug.WriteLine("Screen" + screenCount + " Top:    " + screen.Bounds.Top.ToString());
+                Debug.WriteLine("Screen" + screenCount + " Left:   " + screen.Bounds.Left.ToString());
+                Debug.WriteLine("Screen" + screenCount + " Width:  " + screen.Bounds.Width.ToString());
+                Debug.WriteLine("Screen" + screenCount + " Height: " + screen.Bounds.Height.ToString());
+
                 // set the display time to the base time + offset so multiple screens
                 // change images at different times
                 // send the screen count so each screen has a different slide
@@ -366,6 +372,29 @@ namespace SimpleScreensaver
 }
 '@
 
+# Ref: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/high-dpi-support-in-windows-forms?view=netframeworkdesktop-4.8
+$appManifest = @'
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="SimpleScreensaver" />
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">false</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">unaware</dpiAwareness>
+    </windowsSettings>
+  </application>
+
+</assembly>
+'@
+
 function Convert-XAMLtoWindow {
     param
     (
@@ -398,6 +427,10 @@ function Convert-XAMLtoWindow {
 function New-Screensaver {
     param()
 
+    $manifestName = '{0}.manifest' -f (Split-Path -Path $window.txtOutputFile.Text -Leaf)
+    $manifestFile = Join-Path -Path $env:TEMP -ChildPath $manifestName
+    $appManifest | Out-File -FilePath $manifestFile -Encoding UTF8 -Force
+
     $provider = New-Object -TypeName Microsoft.CSharp.CSharpCodeProvider
     $provider = [Microsoft.CSharp.CSharpCodeProvider]::CreateProvider('CSharp')
 
@@ -422,7 +455,12 @@ function New-Screensaver {
     $cp.GenerateInMemory = $false
     $cp.WarningLevel = 3
     $cp.TreatWarningsAsErrors = $false
-    $cp.CompilerOptions = '/optimize /target:winexe'
+    $cp.CompilerOptions = @(
+        '/optimize'
+        '/target:winexe'
+        '/win32manifest:"{0}"' -f $manifestFile
+    ) -join ' '
+
     $cp.TempFiles = New-Object -TypeName System.CodeDom.Compiler.TempFileCollection -ArgumentList ($env:TEMP, $false)
 
     # Add images as resources
@@ -445,6 +483,7 @@ function New-Screensaver {
     $result = $provider.CompileAssemblyFromFile($cp, $srcFile)
 
     Remove-Item -Path $srcFile -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $manifestFile -Force -ErrorAction SilentlyContinue
 
     if ($result.NativeCompilerReturnValue -eq 0) {
         $window.lblMessage.Content = 'Screensaver built successfully'

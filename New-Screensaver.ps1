@@ -86,7 +86,7 @@ $xaml = @'
          Margin="100,165,0,0"
          VerticalAlignment="Top"
          Content="Seconds" />
-     <Label 
+     <Label
         Name="lblMessage"
         HorizontalAlignment="Left"
         Margin="20,200,0,0"
@@ -101,7 +101,7 @@ $xaml = @'
          HorizontalAlignment="Left"
          Margin="340,275,0,0"
          VerticalAlignment="Top"
-         Content="Run" 
+         Content="Run"
          Visibility="Hidden" />
       <Button
          Name="btnBuild"
@@ -208,7 +208,7 @@ namespace SimpleScreensaver
             var random = new Random();
             foreach (var screen in System.Windows.Forms.Screen.AllScreens)
             {
-                // set the display time to the base time + offset so multiple screens 
+                // set the display time to the base time + offset so multiple screens
                 // change images at different times
                 // send the screen count so each screen has a different slide
                 // it just looks nicer
@@ -221,10 +221,10 @@ namespace SimpleScreensaver
             app.Run();
         }
 
-        /** 
-         *    
+        /**
+         *
          *  Screensaver
-         *    
+         *
          **/
 
         private readonly Storyboard fadeOut;
@@ -257,7 +257,7 @@ namespace SimpleScreensaver
             this.nextSlide = startSlide % Images.Count;
 
             //
-            // Events 
+            // Events
             //
             this.KeyDown += this.Window_KeyDown;
             this.MouseDown += this.Window_MouseDown;
@@ -358,7 +358,7 @@ namespace SimpleScreensaver
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // after fade out is complete it will 
+            // after fade out is complete it will
             // trigger the event to switch to the next slide
             this.fadeOut.Begin(this.slide);
         }
@@ -366,40 +366,36 @@ namespace SimpleScreensaver
 }
 '@
 
-function Convert-XAMLtoWindow
-{
+function Convert-XAMLtoWindow {
     param
     (
         [Parameter(Mandatory = $true)]
         [string]
         $xaml,
-        
+
         [string[]]
         $NamedElements,
-        
+
         [switch]
         $PassThru
     )
-    
+
     Add-Type -AssemblyName PresentationFramework
-    
+
     $reader = [System.XML.XMLReader]::Create([System.IO.StringReader]$xaml)
     $result = [System.Windows.Markup.XAMLReader]::Load($reader)
-    foreach($Name in $NamedElements)
-    {
+    foreach ($Name in $NamedElements) {
         $result | Add-Member -MemberType NoteProperty -Name $Name -Value $result.FindName($Name) -Force
     }
-    
-    if ($PassThru)
-    {
+
+    if ($PassThru) {
         $result
     } else {
         $result.ShowDialog()
     }
 }
 
-function New-Screensaver 
-{
+function New-Screensaver {
     param()
 
     $provider = New-Object -TypeName Microsoft.CSharp.CSharpCodeProvider
@@ -416,31 +412,31 @@ function New-Screensaver
     $cp.ReferencedAssemblies.Add('System.Windows.Forms.dll')
 
     [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object -Process {
-        if($_.FullName -match 'PresentationCore' -or
-           $_.FullName -match 'PresentationFramework' -or
-           $_.FullName -match 'WindowsBase' ) 
-        {
+        if ($_.FullName -match 'PresentationCore' -or
+            $_.FullName -match 'PresentationFramework' -or
+            $_.FullName -match 'WindowsBase' ) {
             $cp.ReferencedAssemblies.Add($_.Location)
         }
     }
-    
+
     $cp.GenerateInMemory = $false
     $cp.WarningLevel = 3
     $cp.TreatWarningsAsErrors = $false
     $cp.CompilerOptions = '/optimize /target:winexe'
     $cp.TempFiles = New-Object -TypeName System.CodeDom.Compiler.TempFileCollection -ArgumentList ($env:TEMP, $false)
 
-    # Add images as resources 
+    # Add images as resources
     $resList = @()
-    $folderProps = @{'Path' = (Join-Path -Path $window.txtImageFolder.Text -ChildPath '*');
-                     'Include' = @('*.jpg','*.jpeg','*.bmp','*.gif','*.png')
-                    }
-    foreach($file in (Get-ChildItem @folderProps | Sort-Object -Property Name))
-    {
+    $folderProps = @{
+        'Path'    = (Join-Path -Path $window.txtImageFolder.Text -ChildPath '*');
+        'Include' = @('*.jpg', '*.jpeg', '*.bmp', '*.gif', '*.png')
+    }
+
+    foreach ($file in (Get-ChildItem @folderProps | Sort-Object -Property Name)) {
         $cp.EmbeddedResources.Add($file.FullName.ToLower())
         $resList += '"{0}"' -f $file.Name.ToLower()
     }
-    
+
     $srcFile = Join-Path -Path $env:TEMP -ChildPath 'screensaver.cs'
     $tmpSource = $source -replace '###timeout###', $window.txtSlideTimeout.Text
     $tmpSource = $tmpSource -replace '###images###', ($resList -join ',')
@@ -449,9 +445,8 @@ function New-Screensaver
     $result = $provider.CompileAssemblyFromFile($cp, $srcFile)
 
     Remove-Item -Path $srcFile -Force -ErrorAction SilentlyContinue
-    
-    if($result.NativeCompilerReturnValue -eq 0)
-    {
+
+    if ($result.NativeCompilerReturnValue -eq 0) {
         $window.lblMessage.Content = 'Screensaver built successfully'
         $window.btnRun.Visibility = [System.Windows.Visibility]::Visible
     } else {
@@ -459,10 +454,11 @@ function New-Screensaver
     }
 }
 
-$window = Convert-XAMLtoWindow -XAML $xaml -NamedElements 'lblImageFolder', 'txtImageFolder', 'btnBrowseForImages', 
-                                                          'lblOutputFile', 'txtOutputFile', 'btnBrowseForScreensaver', 
-                                                          'lblSlideTimeout', 'txtSlideTimeout', 'lblSeconds', 
-                                                          'lblMessage', 'btnRun', 'btnBuild' -PassThru
+$window = Convert-XAMLtoWindow -XAML $xaml -PassThru -NamedElements @(
+    'lblImageFolder', 'txtImageFolder', 'btnBrowseForImages',
+    'lblOutputFile', 'txtOutputFile', 'btnBrowseForScreensaver',
+    'lblSlideTimeout', 'txtSlideTimeout', 'lblSeconds',
+    'lblMessage', 'btnRun', 'btnBuild')
 
 $window.btnBrowseForImages.add_Click(
     {
@@ -471,9 +467,8 @@ $window.btnBrowseForImages.add_Click(
 
         $object = New-Object -ComObject Shell.Application
         $folder = $object.BrowseForFolder(0, 'Select folder that contains images', 0, 0)
-        
-        if($folder -ne $null)
-        {
+
+        if ($folder -ne $null) {
             $window.txtImageFolder.Text = $folder.self.Path
             $window.lblMessage.Content = ''
             $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
@@ -492,8 +487,7 @@ $window.btnBrowseForScreensaver.add_Click(
 
         $result = $saveAs.ShowDialog()
 
-        if($result -eq 'OK')
-        {
+        if ($result -eq 'OK') {
             $window.txtOutputFile.Text = $saveAs.FileName
             $window.lblMessage.Content = ''
             $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
@@ -504,10 +498,9 @@ $window.btnBrowseForScreensaver.add_Click(
 $window.btnRun.add_Click(
     {
         [System.Object]$sender = $args[0]
-        [System.Windows.RoutedEventArgs]$e = $args[1]   
-        
-        if(Test-Path -Path $window.txtOutputFile.Text)
-        {
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+
+        if (Test-Path -Path $window.txtOutputFile.Text) {
             Start-Process -FilePath $window.txtOutputFile.Text -ArgumentList '/s'
         }
     }
@@ -518,29 +511,25 @@ $window.btnBuild.add_Click(
         [System.Object]$sender = $args[0]
         [System.Windows.RoutedEventArgs]$e = $args[1]
 
-        if($window.txtImageFolder.Text -eq '')
-        {
+        if ($window.txtImageFolder.Text -eq '') {
             $window.lblMessage.Content = 'Image folder is not valid'
             return
         }
 
-        if(-Not (Test-Path -Path $window.txtImageFolder.Text))
-        {
+        if (-Not (Test-Path -Path $window.txtImageFolder.Text)) {
             $window.lblMessage.Content = 'Image folder does not exist'
             return
         }
 
-        if($window.txtOutputFile.Text -eq '')
-        {
+        if ($window.txtOutputFile.Text -eq '') {
             $window.lblMessage.Content = 'Screensaver file is not valid'
             return
         }
-        
+
         $x = 0
         $isNum = [System.Int32]::TryParse($window.txtSlideTimeout.Text, [ref]$x)
-        
-        if(-Not $isNum)
-        { 
+
+        if (-Not $isNum) {
             $window.lblMessage.Content = 'Invalid time out'
             return
         }
@@ -551,16 +540,15 @@ $window.btnBuild.add_Click(
 )
 
 $clearRunDetails = {
-        [System.Object]$sender = $args[0]
-        [System.Windows.Controls.TextChangedEventArgs]$e = $args[1]   
-        
-        $window.lblMessage.Content = ''
-        $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
-    }
+    [System.Object]$sender = $args[0]
+    [System.Windows.Controls.TextChangedEventArgs]$e = $args[1]
+
+    $window.lblMessage.Content = ''
+    $window.btnRun.Visibility = [System.Windows.Visibility]::Hidden
+}
 
 $window.txtImageFolder.add_TextChanged($clearRunDetails)
 $window.txtOutputFile.add_TextChanged($clearRunDetails)
 $window.txtSlideTimeout.add_TextChanged($clearRunDetails)
 
 $window.ShowDialog()
-
